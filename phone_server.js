@@ -383,15 +383,18 @@ Meteor.methods({requestPhoneVerification: function (phone) {
     }
 
     var userId = this.userId;
+    // if (!userId) {
+    //     // Get user by phone number
+    //     var existingUser = Meteor.users.findOne({'phone.number': phone}, {fields: {'_id': 1}});
+    //     if (existingUser) {
+    //         userId = existingUser && existingUser._id;
+    //     } else {
+    //         // Create new user with phone number
+    //         userId = createUser({phone:phone});
+    //     }
+    // }
     if (!userId) {
-        // Get user by phone number
-        var existingUser = Meteor.users.findOne({'phone.number': phone}, {fields: {'_id': 1}});
-        if (existingUser) {
-            userId = existingUser && existingUser._id;
-        } else {
-            // Create new user with phone number
-            userId = createUser({phone:phone});
-        }
+        throw new Meteor.Error(403, "Not a valid login user");
     }
     Accounts.sendPhoneVerificationCode(userId, phone);
 }});
@@ -418,11 +421,14 @@ Meteor.methods({verifyPhone: function (phone, code, newPassword) {
             // Change phone format to international SMS format
             phone = normalizePhone(phone);
 
-            var user = Meteor.users.findOne({
-                "phone.number": phone
-            });
+            var user = Meteor.user()
             if (!user)
-                throw new Meteor.Error(403, "Not a valid phone");
+                throw new Meteor.Error(403, "Not a valid login user");
+            // var user = Meteor.users.findOne({
+            //     "phone.number": phone
+            // });
+            // if (!user)
+            //     throw new Meteor.Error(403, "Not a valid phone");
 
             // Verify code is accepted or master code
             if (!user.services.phone || !user.services.phone.verify || !user.services.phone.verify.code ||
@@ -610,7 +616,9 @@ Accounts.createUserWithPhone = function (options, callback) {
 /// PASSWORD-SPECIFIC INDEXES ON USERS
 ///
 Meteor.users._ensureIndex('phone.number',
-    {unique: 1, sparse: 1});
+    {sparse: 1});
+// Meteor.users._ensureIndex('phone.number',
+//     {unique: 1, sparse: 1});
 Meteor.users._ensureIndex('services.phone.verify.code',
     {unique: 1, sparse: 1});
 
